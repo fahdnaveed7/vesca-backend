@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const waitlistRoutes  = require('./routes/waitlist');
 const outreachRoutes  = require('./routes/outreach');
 const inboxRoutes     = require('./routes/inbox');
 const dealRoutes      = require('./routes/deals');
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'vesca.io' }));
 
+app.use('/waitlist',  waitlistRoutes);
 app.use('/outreach',  outreachRoutes);
 app.use('/inbound',   inboxRoutes);
 app.use('/deals',     dealRoutes);
