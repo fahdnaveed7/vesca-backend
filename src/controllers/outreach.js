@@ -27,9 +27,10 @@ async function generateOutreach(req, res, next) {
 // Generates email, sends it via Resend, saves outreach + creates deal in DB.
 async function sendOutreach(req, res, next) {
   try {
-    const { user_id, brand, niche, pitch, to_email } = req.body;
-    if (!user_id || !brand || !niche || !pitch || !to_email) {
-      return res.status(400).json({ error: 'user_id, brand, niche, pitch, to_email are required' });
+    const { brand, niche, pitch, to_email } = req.body;
+    const user_id = req.user.id;
+    if (!brand || !niche || !pitch || !to_email) {
+      return res.status(400).json({ error: 'brand, niche, pitch, to_email are required' });
     }
 
     // 1. Generate email with Claude

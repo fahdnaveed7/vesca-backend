@@ -25,7 +25,7 @@ async function generateProposal(req, res, next) {
 
     const brandName = deal?.brand_name || deal_id || 'Brand';
     const creatorName = deal?.users?.name || 'Creator';
-    const userId = deal?.user_id || '00000000-0000-0000-0000-000000000001';
+    const userId = req.user.id;
 
     // Auto-create a deal if brand name was given but no deal exists
     let resolvedDealId = deal?.id || null;
@@ -54,7 +54,7 @@ async function generateProposal(req, res, next) {
       .from('proposals')
       .insert({
         deal_id:       resolvedDealId,
-        user_id:       userId,
+        user_id:       req.user.id,
         deliverables,
         price,
         timeline,

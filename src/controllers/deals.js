@@ -5,8 +5,8 @@ const VALID_STATUSES = ['new', 'contacted', 'replied', 'negotiating', 'won', 'pa
 // GET /deals?user_id=xxx&status=xxx
 async function listDeals(req, res, next) {
   try {
-    const { user_id, status } = req.query;
-    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+    const { status } = req.query;
+    const user_id = req.user.id;
 
     let query = supabase
       .from('deals')
@@ -28,9 +28,10 @@ async function listDeals(req, res, next) {
 // POST /deals
 async function createDeal(req, res, next) {
   try {
-    const { user_id, brand_name, notes, status = 'new' } = req.body;
-    if (!user_id || !brand_name) {
-      return res.status(400).json({ error: 'user_id and brand_name are required' });
+    const { brand_name, notes, status = 'new' } = req.body;
+    const user_id = req.user.id;
+    if (!brand_name) {
+      return res.status(400).json({ error: 'brand_name is required' });
     }
     if (!VALID_STATUSES.includes(status)) {
       return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });

@@ -7,9 +7,10 @@ const prompts       = require('../prompts');
 // creates/updates a deal, stores the message, and returns a reply suggestion.
 async function handleInboundEmail(req, res, next) {
   try {
-    const { user_id, from_email, from_name, subject, email_text } = req.body;
-    if (!user_id || !email_text) {
-      return res.status(400).json({ error: 'user_id and email_text are required' });
+    const { from_email, from_name, subject, email_text } = req.body;
+    const user_id = req.user.id;
+    if (!email_text) {
+      return res.status(400).json({ error: 'email_text is required' });
     }
 
     // 1. Analyze email with Claude — returns structured JSON
