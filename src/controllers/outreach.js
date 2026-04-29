@@ -7,7 +7,9 @@ const prompts     = require('../prompts');
 // Returns an AI-drafted cold email. Does not send or save anything yet.
 async function generateOutreach(req, res, next) {
   try {
-    const { brand, niche, pitch } = req.body;
+    const brand = req.body.brand || req.body.brand_name;
+    const niche = req.body.niche || req.body.your_niche;
+    const pitch = req.body.pitch || req.body.key_pitch;
     if (!brand || !niche || !pitch) {
       return res.status(400).json({ error: 'brand, niche, and pitch are required' });
     }
