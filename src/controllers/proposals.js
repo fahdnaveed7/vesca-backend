@@ -9,35 +9,43 @@ const prompts         = require('../prompts');
 async function generateProposal(req, res, next) {
   try {
     const { deal_id, deliverables, price, timeline } = req.body;
-    if (!deal_id || !deliverables || !price || !timeline) {
-      return res.status(400).json({ error: 'deal_id, deliverables, price, timeline are required' });
+    if (!deliverables || !price || !timeline) {
+      return res.status(400).json({ error: 'deliverables, price, timeline are required' });
     }
 
-    // Fetch deal to get brand name and user
-    const { data: deal, error: dealErr } = await supabase
-      .from('deals')
-      .select('*, users(name)')
-      .eq('id', deal_id)
-      .single();
+    // Fetch deal — support lookup by UUID or brand name
+    const isUuid = /^[0-9a-f-]{36}$/i.test(deal_id);
+    let dealQuery = supabase.from('deals').select('*, users(name)');
+    dealQuery = isUuid
+      ? dealQuery.eq('id', deal_id)
+      : dealQuery.ilike('brand_name', deal_id);
+    const { data: deal, error: dealErr } = await dealQuery.maybeSingle();
+
+    // If no deal found, generate proposal without a deal record
+    const brandName = deal?.brand_name || deal_id || 'Brand';
+    const creatorName = deal?.users?.name || 'Creator';
+    const userId = deal?.user_id || '00000000-0000-0000-0000-000000000001';
+    const resolvedDealId = deal?.id || null;
+
     if (dealErr) throw dealErr;
 
     const { system, user } = prompts.proposalText({
-      brand:        deal.brand_name,
+      brand:        brandName,
       deliverables,
       price,
       timeline,
-      creatorName:  deal.users?.name || 'Creator',
+      creatorName,
     });
     const proposalText = await ask(system, user, { maxTokens: 2048 });
 
     // Build HTML for PDF rendering later
-    const proposalHtml = markdownToHtml(proposalText, deal.brand_name, price);
+    const proposalHtml = markdownToHtml(proposalText, brandName, price);
 
     const { data: proposal, error: propErr } = await supabase
       .from('proposals')
       .insert({
-        deal_id,
-        user_id:       deal.user_id,
+        deal_id:       resolvedDealId,
+        user_id:       userId,
         deliverables,
         price,
         timeline,
