@@ -21,13 +21,22 @@ async function generateProposal(req, res, next) {
       : dealQuery.ilike('brand_name', deal_id);
     const { data: deal, error: dealErr } = await dealQuery.maybeSingle();
 
-    // If no deal found, generate proposal without a deal record
+    if (dealErr) throw dealErr;
+
     const brandName = deal?.brand_name || deal_id || 'Brand';
     const creatorName = deal?.users?.name || 'Creator';
     const userId = deal?.user_id || '00000000-0000-0000-0000-000000000001';
-    const resolvedDealId = deal?.id || null;
 
-    if (dealErr) throw dealErr;
+    // Auto-create a deal if brand name was given but no deal exists
+    let resolvedDealId = deal?.id || null;
+    if (!resolvedDealId && brandName) {
+      const { data: newDeal } = await supabase
+        .from('deals')
+        .insert({ user_id: userId, brand_name: brandName, status: 'negotiating' })
+        .select()
+        .single();
+      resolvedDealId = newDeal?.id || null;
+    }
 
     const { system, user } = prompts.proposalText({
       brand:        brandName,
