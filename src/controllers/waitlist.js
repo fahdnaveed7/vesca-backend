@@ -29,6 +29,7 @@ async function joinWaitlist(req, res, next) {
       to: email,
       subject: `You're #${position} on the Vesca waitlist 🎉`,
       html: waitlistWelcome({ email, position }),
+      senderName: 'Fahd at Vesca',
     }).catch(err => console.error('Welcome email failed:', err.message));
 
     res.status(201).json({ message: 'You are on the waitlist!', position, data });

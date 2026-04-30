@@ -51,6 +51,7 @@ async function sendWeeklyDigest(req, res, next) {
           to: email,
           subject: `Creator Deal Tips — Week #${weekNumber} 💼`,
           html: weeklyCreatorTips({ tipsHtml: tipsText, weekNumber }),
+          senderName: 'Fahd at Vesca',
         });
         sent++;
         // Tiny pause between sends
@@ -91,6 +92,7 @@ async function grantAccess(req, res, next) {
       to: email,
       subject: `Your Vesca access is ready 🎉`,
       html: accessGranted({ email }),
+      senderName: 'Fahd at Vesca',
     });
 
     // Mark as granted in waitlist table
