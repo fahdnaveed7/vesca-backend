@@ -6,8 +6,21 @@ async function getProfile(req, res, next) {
       .from('users')
       .select('*')
       .eq('id', req.user.id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
+
+    if (!data) {
+      // Auto-create profile for users who bypassed the trigger (e.g. admin-created)
+      const name = req.user.user_metadata?.name || req.user.email?.split('@')[0] || 'Creator';
+      const { data: created, error: createErr } = await supabase
+        .from('users')
+        .insert({ id: req.user.id, email: req.user.email, name })
+        .select()
+        .single();
+      if (createErr) throw createErr;
+      return res.json(created);
+    }
+
     res.json(data);
   } catch (err) { next(err); }
 }
