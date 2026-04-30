@@ -64,6 +64,7 @@ async function updateDealStatus(req, res, next) {
       .from('deals')
       .update({ status })
       .eq('id', id)
+      .eq('user_id', req.user.id)
       .select()
       .single();
     if (error) throw error;

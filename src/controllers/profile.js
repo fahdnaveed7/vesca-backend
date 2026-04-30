@@ -39,14 +39,14 @@ async function getStats(req, res, next) {
   try {
     const { data: deals, error } = await supabase
       .from('deals')
-      .select('status, amount')
+      .select('id, status')
       .eq('user_id', req.user.id);
     if (error) throw error;
 
-    const { data: payments } = await supabase
-      .from('payments')
-      .select('amount')
-      .in('deal_id', deals.map(d => d.id).filter(Boolean));
+    const dealIds = (deals || []).map(d => d.id);
+    const { data: payments } = dealIds.length
+      ? await supabase.from('payments').select('amount').in('deal_id', dealIds)
+      : { data: [] };
 
     const won     = deals.filter(d => d.status === 'won' || d.status === 'paid');
     const paid    = deals.filter(d => d.status === 'paid');

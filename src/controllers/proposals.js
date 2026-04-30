@@ -15,7 +15,7 @@ async function generateProposal(req, res, next) {
 
     // Fetch deal — support lookup by UUID or brand name
     const isUuid = /^[0-9a-f-]{36}$/i.test(deal_id);
-    let dealQuery = supabase.from('deals').select('*, users(name)');
+    let dealQuery = supabase.from('deals').select('*, users(name)').eq('user_id', req.user.id);
     dealQuery = isUuid
       ? dealQuery.eq('id', deal_id)
       : dealQuery.ilike('brand_name', deal_id);
