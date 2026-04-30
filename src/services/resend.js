@@ -7,7 +7,7 @@ const FROM = process.env.RESEND_FROM || 'hello@getvesca.com';
  * Send a plain-text or HTML email.
  */
 async function sendEmail({ to, subject, html, text, attachments = [], senderName, replyTo }) {
-  const from = senderName ? `${senderName} via Vesca <${FROM}>` : FROM;
+  const from = senderName ? `${senderName} <${FROM}>` : `Vesca <${FROM}>`;
   const { data, error } = await resend.emails.send({
     from,
     reply_to: replyTo || undefined,
