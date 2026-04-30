@@ -17,7 +17,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'vesca.io' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'vesca.io', v: '9a5e17f', routes: ['profile','outreach','inbound','deals','proposal','payment'] }));
 
 app.use('/waitlist',  waitlistRoutes);
 app.use('/profile',   auth, profileRoutes);
