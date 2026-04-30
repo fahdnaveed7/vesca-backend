@@ -31,3 +31,4 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Vesca backend running on port ${PORT}`));
+// railway redeploy Wed Apr 29 20:00:36 CDT 2026
