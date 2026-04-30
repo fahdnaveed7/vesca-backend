@@ -33,15 +33,26 @@ async function sendOutreach(req, res, next) {
       return res.status(400).json({ error: 'brand, niche, pitch, to_email are required' });
     }
 
-    // 1. Generate email with Claude
+    // 1. Fetch sender profile
+    const { data: profile } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', user_id)
+      .single();
+    const senderName  = profile?.name  || 'Creator';
+    const senderEmail = profile?.email || req.user.email;
+
+    // 2. Generate email body with AI
     const { system, user } = prompts.outreachEmail({ brand, niche, pitch });
     const emailBody = await ask(system, user);
 
-    // 2. Send via Resend
+    // 3. Send via Resend — appears as creator, replies go to their inbox
     await sendEmail({
-      to: to_email,
-      subject: `Partnership opportunity — ${brand}`,
-      text: emailBody,
+      to:          to_email,
+      subject:     `Partnership opportunity — ${brand}`,
+      html:        outreachTemplate({ senderName, emailBody }),
+      senderName,
+      replyTo:     senderEmail,
     });
 
     // 3. Create deal with status = "contacted"
@@ -71,6 +82,43 @@ async function sendOutreach(req, res, next) {
   } catch (err) {
     next(err);
   }
+}
+
+function outreachTemplate({ senderName, emailBody }) {
+  const bodyHtml = emailBody
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f9f9f9;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="padding:32px 40px 24px;border-bottom:1px solid #f0f0f0;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:0.08em;color:#8B5CF6;text-transform:uppercase;">Vesca</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;color:#1a1a1a;font-size:15px;line-height:1.75;">
+            <p>${bodyHtml}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 40px 32px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
+            Sent by <strong>${senderName}</strong> via <a href="https://getvesca.com" style="color:#8B5CF6;text-decoration:none;">Vesca</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 module.exports = { generateOutreach, sendOutreach };

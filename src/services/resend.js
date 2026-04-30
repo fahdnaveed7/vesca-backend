@@ -6,13 +6,15 @@ const FROM = process.env.RESEND_FROM || 'deals@vesca.io';
 /**
  * Send a plain-text or HTML email.
  */
-async function sendEmail({ to, subject, html, text, attachments = [] }) {
+async function sendEmail({ to, subject, html, text, attachments = [], senderName, replyTo }) {
+  const from = senderName ? `${senderName} via Vesca <${FROM}>` : FROM;
   const { data, error } = await resend.emails.send({
-    from: FROM,
+    from,
+    reply_to: replyTo || undefined,
     to,
     subject,
-    html: html || `<pre>${text}</pre>`,
-    attachments, // [{ filename, content (base64 string) }]
+    html: html || `<pre style="font-family:sans-serif">${text}</pre>`,
+    attachments,
   });
   if (error) throw new Error(`Resend error: ${error.message}`);
   return data;

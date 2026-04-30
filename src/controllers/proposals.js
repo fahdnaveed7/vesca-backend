@@ -116,12 +116,24 @@ async function sendProposal(req, res, next) {
 
     const pdfBuffer = await htmlToPdf(proposal.proposal_html);
 
+    // Fetch sender profile
+    const { data: profile } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', req.user.id)
+      .single();
+    const senderName  = profile?.name  || 'Creator';
+    const senderEmail = profile?.email || req.user.email;
+    const brandName   = proposal.deals?.brand_name || 'Brand';
+
     await sendEmail({
-      to:      to_email,
-      subject: `Partnership Proposal — ${proposal.deals.brand_name}`,
-      html:    '<p>Please find our partnership proposal attached. We look forward to working together!</p>',
+      to:          to_email,
+      subject:     `Partnership Proposal — ${brandName}`,
+      html:        proposalEmailTemplate({ senderName, brandName, price: proposal.price }),
+      senderName,
+      replyTo:     senderEmail,
       attachments: [{
-        filename: 'proposal.pdf',
+        filename: `proposal-${brandName.toLowerCase().replace(/\s+/g, '-')}.pdf`,
         content:  pdfBuffer.toString('base64'),
       }],
     });
@@ -171,6 +183,57 @@ function markdownToHtml(markdown, brandName, price) {
   </div>
   <h1>Proposal for ${brandName}</h1>
   ${body}
+</body>
+</html>`;
+}
+
+function proposalEmailTemplate({ senderName, brandName, price }) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f9f9f9;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="padding:32px 40px 24px;border-bottom:1px solid #f0f0f0;">
+            <span style="font-size:13px;font-weight:700;letter-spacing:0.08em;color:#8B5CF6;text-transform:uppercase;">Vesca</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 40px 32px;">
+            <h1 style="margin:0 0 8px;font-size:22px;color:#1a1a1a;font-weight:700;">Partnership Proposal</h1>
+            <p style="margin:0 0 24px;color:#666;font-size:14px;">From ${senderName} · For ${brandName}</p>
+
+            <div style="background:#f5f3ff;border-left:3px solid #8B5CF6;border-radius:4px;padding:16px 20px;margin-bottom:28px;">
+              <p style="margin:0;font-size:13px;color:#5B21B6;font-weight:600;">PROPOSED VALUE</p>
+              <p style="margin:4px 0 0;font-size:26px;font-weight:800;color:#1a1a1a;">$${price}</p>
+            </div>
+
+            <p style="color:#333;font-size:15px;line-height:1.7;margin:0 0 16px;">
+              Hi there,
+            </p>
+            <p style="color:#333;font-size:15px;line-height:1.7;margin:0 0 16px;">
+              I've put together a partnership proposal for <strong>${brandName}</strong>. Please find the full details in the attached PDF — it covers deliverables, timeline, and pricing.
+            </p>
+            <p style="color:#333;font-size:15px;line-height:1.7;margin:0 0 28px;">
+              I'd love to discuss this further. Feel free to reply directly to this email and we can go from there.
+            </p>
+
+            <p style="color:#333;font-size:15px;line-height:1.7;margin:0;">
+              Best,<br>
+              <strong>${senderName}</strong>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 40px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
+            Sent via <a href="https://getvesca.com" style="color:#8B5CF6;text-decoration:none;">Vesca</a> — Creator Deal Management
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
 }
