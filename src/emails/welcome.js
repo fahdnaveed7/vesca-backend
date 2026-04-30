@@ -72,7 +72,7 @@ function waitlistWelcome({ email, position }) {
           <td style="padding:20px 40px;border-top:1px solid #F3F4F6;">
             <p style="margin:0;font-size:12px;color:#999;">
               You're receiving this because you signed up at <a href="https://getvesca.com" style="color:#7C3AED;text-decoration:none;">getvesca.com</a>.
-              · <a href="mailto:deals@vesca.io" style="color:#999;">Unsubscribe</a>
+              · <a href="mailto:hello@getvesca.com" style="color:#999;">Unsubscribe</a>
             </p>
           </td>
         </tr>
@@ -132,7 +132,7 @@ function weeklyCreatorTips({ tipsHtml, weekNumber }) {
           <td style="padding:20px 40px;border-top:1px solid #F3F4F6;">
             <p style="margin:0;font-size:12px;color:#999;">
               Sent by <a href="https://getvesca.com" style="color:#7C3AED;text-decoration:none;">Vesca</a>.
-              You're on our waitlist — <a href="mailto:deals@vesca.io?subject=Unsubscribe" style="color:#999;">unsubscribe</a>.
+              You're on our waitlist — <a href="mailto:hello@getvesca.com?subject=Unsubscribe" style="color:#999;">unsubscribe</a>.
             </p>
           </td>
         </tr>

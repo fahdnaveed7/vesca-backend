@@ -1,7 +1,7 @@
 const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.RESEND_FROM || 'deals@vesca.io';
+const FROM = process.env.RESEND_FROM || 'hello@getvesca.com';
 
 /**
  * Send a plain-text or HTML email.
