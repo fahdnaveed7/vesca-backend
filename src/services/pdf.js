@@ -2,12 +2,12 @@ const puppeteer = require('puppeteer');
 
 /**
  * Convert an HTML string into a PDF buffer.
- * Returns a Buffer — caller decides whether to save or attach.
+ * Margins are set to 0 — all spacing is controlled in the HTML/CSS template.
  */
 async function htmlToPdf(html) {
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security'],
   });
 
   const page = await browser.newPage();
@@ -16,7 +16,7 @@ async function htmlToPdf(html) {
   const pdfBuffer = await page.pdf({
     format: 'A4',
     printBackground: true,
-    margin: { top: '40px', bottom: '40px', left: '48px', right: '48px' },
+    margin: { top: '0', bottom: '0', left: '0', right: '0' },
   });
 
   await browser.close();

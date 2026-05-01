@@ -156,46 +156,254 @@ async function sendProposal(req, res, next) {
   }
 }
 
-// Minimal markdown → HTML for PDF rendering
+// Markdown → clean HTML for PDF rendering
 function markdownToHtml(markdown, brandName, price) {
-  const body = markdown
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^\* (.+)$/gm, '<li>$1</li>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul style="padding-left:20px;margin:12px 0;">${m}</ul>`)
-    .replace(/\n/g, '<br>');
+  // Split into blocks, convert each
+  const blocks = markdown.split(/\n{2,}/);
+  const body = blocks.map(block => {
+    const trimmed = block.trim();
+    if (!trimmed) return '';
+
+    // Headings
+    if (/^## (.+)/.test(trimmed)) return `<h2>${trimmed.replace(/^## /, '')}</h2>`;
+    if (/^# (.+)/.test(trimmed))  return `<h2>${trimmed.replace(/^# /, '')}</h2>`;
+
+    // List blocks
+    if (/^[-*] /m.test(trimmed)) {
+      const items = trimmed
+        .split('\n')
+        .filter(l => /^[-*] /.test(l.trim()))
+        .map(l => `<li>${l.replace(/^[-*] /, '').trim()}</li>`)
+        .join('');
+      return `<ul>${items}</ul>`;
+    }
+
+    // Regular paragraph — apply inline formatting
+    const inline = trimmed
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, ' ');
+    return `<p>${inline}</p>`;
+  }).join('');
+
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-  * { box-sizing: border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 720px; margin: 0 auto; color: #1a1a1a; line-height: 1.75; padding: 0 40px 60px; }
-  .top-bar { background: #7C3AED; height: 4px; margin: 0 -40px 48px; }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid #E9D5FF; }
-  .wordmark { font-size: 15px; font-weight: 800; color: #7C3AED; letter-spacing: 0.06em; text-transform: uppercase; }
-  .wordmark span { color: #1a1a1a; font-weight: 400; font-size: 13px; margin-left: 8px; }
-  .price-badge { background: #7C3AED; color: #fff; padding: 10px 22px; border-radius: 8px; font-size: 22px; font-weight: 800; box-shadow: 0 2px 12px rgba(124,58,237,0.35); }
-  h1 { font-size: 28px; font-weight: 800; border-bottom: 2px solid #7C3AED; padding-bottom: 10px; margin-bottom: 28px; color: #1a1a1a; }
-  h2 { font-size: 18px; font-weight: 700; margin-top: 36px; margin-bottom: 8px; color: #4C1D95; }
-  p { margin: 0 0 16px; font-size: 15px; color: #374151; }
-  ul { color: #374151; font-size: 15px; }
-  li { margin-bottom: 6px; }
-  strong { color: #1a1a1a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  /* ── Top amber bar ── */
+  .top-bar {
+    background: #c9a040;
+    height: 5px;
+    width: 100%;
+    display: block;
+  }
+
+  /* ── Page wrapper ── */
+  .page {
+    padding: 48px 64px 64px;
+    max-width: 794px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: table;
+    width: 100%;
+    margin-bottom: 40px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid #e8e0d0;
+  }
+  .header-left  { display: table-cell; vertical-align: middle; }
+  .header-right { display: table-cell; vertical-align: middle; text-align: right; }
+
+  .wordmark {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #c9a040;
+  }
+  .wordmark-sub {
+    font-size: 11px;
+    color: #888;
+    font-weight: 400;
+    margin-top: 2px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .date-label {
+    font-size: 11px;
+    color: #999;
+    text-align: right;
+  }
+
+  /* ── Title block ── */
+  .title-block {
+    margin-bottom: 32px;
+  }
+  .title-brand {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #c9a040;
+    margin-bottom: 6px;
+  }
+  .title-main {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* ── Price callout ── */
+  .price-row {
+    display: table;
+    width: 100%;
+    margin-bottom: 36px;
+  }
+  .price-box {
+    display: table-cell;
+    background: #fdf8ee;
+    border-left: 3px solid #c9a040;
+    padding: 16px 24px;
+    vertical-align: middle;
+  }
+  .price-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #a07830;
+    margin-bottom: 4px;
+  }
+  .price-amount {
+    font-size: 30px;
+    font-weight: 900;
+    color: #1a1a1a;
+    letter-spacing: -0.03em;
+  }
+
+  /* ── Content ── */
+  h2 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #c9a040;
+    margin-top: 32px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e8e0d0;
+  }
+
+  p {
+    font-size: 14px;
+    color: #374151;
+    margin-bottom: 14px;
+    line-height: 1.75;
+  }
+
+  ul {
+    margin: 0 0 16px 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  li {
+    font-size: 14px;
+    color: #374151;
+    padding: 5px 0 5px 18px;
+    position: relative;
+    line-height: 1.6;
+    border-bottom: 1px solid #f4f0e8;
+  }
+  li:last-child { border-bottom: none; }
+  li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: #c9a040;
+    font-weight: 700;
+  }
+
+  strong { color: #1a1a1a; font-weight: 600; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid #e8e0d0;
+    display: table;
+    width: 100%;
+  }
+  .footer-left  { display: table-cell; vertical-align: middle; }
+  .footer-right { display: table-cell; vertical-align: middle; text-align: right; }
+  .footer-text  { font-size: 11px; color: #bbb; }
+  .footer-brand { font-size: 11px; font-weight: 700; color: #c9a040; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
 </head>
 <body>
+
   <div class="top-bar"></div>
-  <div class="header">
-    <div class="wordmark">Vesca <span>Creator Partnership Proposal</span></div>
-    <div class="price-badge">$${price}</div>
+
+  <div class="page">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="wordmark">Vesca</div>
+        <div class="wordmark-sub">Creator Partnership Proposal</div>
+      </div>
+      <div class="header-right">
+        <div class="date-label">${today}</div>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="title-block">
+      <div class="title-brand">Prepared for ${brandName}</div>
+      <div class="title-main">Partnership Proposal</div>
+    </div>
+
+    <!-- Price callout -->
+    <div class="price-row">
+      <div class="price-box">
+        <div class="price-label">Proposed investment</div>
+        <div class="price-amount">$${Number(price).toLocaleString()}</div>
+      </div>
+    </div>
+
+    <!-- Proposal body -->
+    ${body}
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <div class="footer-text">Created with Vesca · getvesca.com</div>
+      </div>
+      <div class="footer-right">
+        <div class="footer-brand">Vesca</div>
+      </div>
+    </div>
+
   </div>
-  <h1>Proposal for ${brandName}</h1>
-  ${body}
+
 </body>
 </html>`;
 }
