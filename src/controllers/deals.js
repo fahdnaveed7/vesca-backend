@@ -2,7 +2,7 @@ const supabase = require('../services/supabase');
 
 const VALID_STATUSES = ['new', 'contacted', 'replied', 'negotiating', 'won', 'paid'];
 
-// GET /deals?user_id=xxx&status=xxx
+// GET /deals
 async function listDeals(req, res, next) {
   try {
     const { status } = req.query;
@@ -28,8 +28,9 @@ async function listDeals(req, res, next) {
 // POST /deals
 async function createDeal(req, res, next) {
   try {
-    const { brand_name, notes, status = 'new' } = req.body;
+    const { brand_name, notes, status = 'new', amount, follow_up_date } = req.body;
     const user_id = req.user.id;
+
     if (!brand_name) {
       return res.status(400).json({ error: 'brand_name is required' });
     }
@@ -37,9 +38,13 @@ async function createDeal(req, res, next) {
       return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
     }
 
+    const payload = { user_id, brand_name, notes, status };
+    if (amount      !== undefined && amount      !== null) payload.amount        = amount;
+    if (follow_up_date !== undefined && follow_up_date !== null) payload.follow_up_date = follow_up_date;
+
     const { data, error } = await supabase
       .from('deals')
-      .insert({ user_id, brand_name, notes, status })
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;
@@ -50,7 +55,43 @@ async function createDeal(req, res, next) {
   }
 }
 
-// PATCH /deals/:id/status
+// PATCH /deals/:id  — full update (status, amount, follow_up_date, notes)
+async function updateDeal(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { status, amount, follow_up_date, notes } = req.body;
+
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
+    }
+
+    const patch = {};
+    if (status        !== undefined) patch.status        = status;
+    if (amount        !== undefined) patch.amount        = amount;
+    if (follow_up_date !== undefined) patch.follow_up_date = follow_up_date;
+    if (notes         !== undefined) patch.notes         = notes;
+
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    const { data, error } = await supabase
+      .from('deals')
+      .update(patch)
+      .eq('id', id)
+      .eq('user_id', req.user.id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Deal not found' });
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PATCH /deals/:id/status  — quick status-only update (drag and drop)
 async function updateDealStatus(req, res, next) {
   try {
     const { id } = req.params;
@@ -66,8 +107,9 @@ async function updateDealStatus(req, res, next) {
       .eq('id', id)
       .eq('user_id', req.user.id)
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Deal not found' });
 
     res.json(data);
   } catch (err) {
@@ -75,4 +117,4 @@ async function updateDealStatus(req, res, next) {
   }
 }
 
-module.exports = { listDeals, createDeal, updateDealStatus };
+module.exports = { listDeals, createDeal, updateDeal, updateDealStatus };
