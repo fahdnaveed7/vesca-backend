@@ -117,4 +117,20 @@ async function updateDealStatus(req, res, next) {
   }
 }
 
-module.exports = { listDeals, createDeal, updateDeal, updateDealStatus };
+// DELETE /deals/:id
+async function deleteDeal(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('deals')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', req.user.id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listDeals, createDeal, updateDeal, updateDealStatus, deleteDeal };
