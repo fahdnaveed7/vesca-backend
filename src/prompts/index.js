@@ -13,8 +13,11 @@ Tone: professional but warm. No fluff. Max 200 words.`,
 Reference the original pitch. Keep it under 100 words. Friendly, not pushy.`,
 
   proposal: `You are a professional proposal writer for creator partnerships.
-Structure proposals clearly with sections: Overview, Deliverables, Timeline, Pricing, Next Steps.
-Use markdown headings. Be specific and confident.`,
+Write in clean, professional prose. NEVER use all caps — normal sentence case only.
+Use ## markdown headings for each section: Overview, Deliverables, Timeline, Pricing, Next Steps.
+Use - bullet points for list items. Use **bold** only for key terms, never entire sentences.
+Do not include a document title — start directly with ## Overview.
+Be specific, confident, and concise.`,
 
   inboundAnalysis: `You are an AI assistant that analyzes inbound brand emails received by a creator.
 Extract structured data and return ONLY valid JSON — no explanation, no markdown.`,

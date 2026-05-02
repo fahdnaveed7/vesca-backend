@@ -156,6 +156,34 @@ async function sendProposal(req, res, next) {
   }
 }
 
+// Convert a string to Title Case
+function toTitleCase(str) {
+  const lower = str.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+// Convert ALL CAPS text to sentence case (preserve proper nouns heuristically)
+function fixCaps(text) {
+  // If more than 60% of alpha chars are uppercase, convert to sentence case word by word
+  const alpha = text.replace(/[^a-zA-Z]/g, '');
+  if (!alpha.length) return text;
+  const upperRatio = (text.match(/[A-Z]/g) || []).length / alpha.length;
+  if (upperRatio < 0.6) return text; // already mixed case, leave alone
+  // Sentence-case: lowercase everything, capitalize first letter of each sentence
+  return text.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase());
+}
+
+// Apply inline markdown: **bold**, *em*, strip leftover ** markers
+function applyInline(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+?)\*/g, '<em>$1</em>')
+    .replace(/\*\*/g, '') // strip any orphaned **
+    .replace(/\n/g, ' ');
+}
+
+const SECTION_LABELS = ['OVERVIEW', 'DELIVERABLES', 'TIMELINE', 'PRICING', 'NEXT STEPS', 'TERMS', 'ABOUT'];
+
 // Markdown → clean HTML for PDF rendering
 function markdownToHtml(markdown, brandName, price) {
   // Split into blocks, convert each
@@ -164,25 +192,55 @@ function markdownToHtml(markdown, brandName, price) {
     const trimmed = block.trim();
     if (!trimmed) return '';
 
-    // Headings
-    if (/^## (.+)/.test(trimmed)) return `<h2>${trimmed.replace(/^## /, '')}</h2>`;
-    if (/^# (.+)/.test(trimmed))  return `<h2>${trimmed.replace(/^# /, '')}</h2>`;
-
-    // List blocks
-    if (/^[-*] /m.test(trimmed)) {
-      const items = trimmed
-        .split('\n')
-        .filter(l => /^[-*] /.test(l.trim()))
-        .map(l => `<li>${l.replace(/^[-*] /, '').trim()}</li>`)
-        .join('');
-      return `<ul>${items}</ul>`;
+    // ## or # headings
+    if (/^## (.+)/.test(trimmed)) {
+      const label = trimmed.replace(/^## /, '').replace(/\*\*/g, '');
+      return `<h2>${toTitleCase(label)}</h2>`;
+    }
+    if (/^# (.+)/.test(trimmed)) {
+      const label = trimmed.replace(/^# /, '').replace(/\*\*/g, '');
+      return `<h2>${toTitleCase(label)}</h2>`;
     }
 
-    // Regular paragraph — apply inline formatting
-    const inline = trimmed
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, ' ');
+    // ALL-CAPS section label embedded at start of paragraph (old AI format)
+    // e.g. "OVERVIEW We are excited to propose..."
+    const embeddedLabel = SECTION_LABELS.find(lbl => trimmed.toUpperCase().startsWith(lbl + ' ') || trimmed.toUpperCase().startsWith(lbl + ':'));
+    if (embeddedLabel) {
+      const afterLabel = trimmed.slice(embeddedLabel.length).replace(/^[:\s]+/, '');
+      const bodyText = fixCaps(afterLabel);
+      return `<h2>${toTitleCase(embeddedLabel)}</h2><p>${applyInline(bodyText)}</p>`;
+    }
+
+    // Standalone ALL-CAPS label on its own line
+    if (/^[A-Z][A-Z\s]{2,}$/.test(trimmed) && trimmed.length < 40 && !trimmed.includes('.')) {
+      return `<h2>${toTitleCase(trimmed)}</h2>`;
+    }
+
+    // List blocks — may contain mixed bullet styles and inline **bold**
+    if (/^[-*•] /m.test(trimmed) || /^\d+\. /m.test(trimmed)) {
+      const lines = trimmed.split('\n').filter(l => /^[-*•] |^\d+\. /.test(l.trim()));
+      if (lines.length) {
+        const items = lines.map(l => {
+          const text = l.trim().replace(/^[-*•] /, '').replace(/^\d+\. /, '');
+          return `<li>${applyInline(fixCaps(text))}</li>`;
+        }).join('');
+        return `<ul>${items}</ul>`;
+      }
+    }
+
+    // Paragraph with mixed list items (e.g. "- **Week 1**: ..." embedded in prose)
+    if (trimmed.includes(' - ') || trimmed.includes('\n- ')) {
+      // Split on inline dashes that look like list items
+      const parts = trimmed.split(/\n?- \*\*|\n- /);
+      if (parts.length > 1) {
+        const intro = parts[0].trim();
+        const items = parts.slice(1).map(p => `<li>${applyInline(fixCaps('**' + p.trim()))}</li>`).join('');
+        return (intro ? `<p>${applyInline(fixCaps(intro))}</p>` : '') + `<ul>${items}</ul>`;
+      }
+    }
+
+    // Regular paragraph
+    const inline = applyInline(fixCaps(trimmed));
     return `<p>${inline}</p>`;
   }).join('');
 
