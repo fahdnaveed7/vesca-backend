@@ -82,8 +82,11 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.post('/waitlist',  waitlistLimiter, require('./controllers/waitlist').joinWaitlist);
 app.get('/waitlist',   requireCronSecret, require('./controllers/waitlist').getWaitlist);
 
-// Public media kit endpoint — no auth
-app.get('/kit/:user_id', require('./controllers/profile').getPublicKit);
+// Public endpoints — no auth
+const profileCtrl = require('./controllers/profile');
+app.get('/kit/:user_id',     profileCtrl.getPublicKit);
+app.get('/kit/u/:username',  profileCtrl.getPublicKitByUsername);
+app.post('/auth/resolve-username', profileCtrl.resolveUsername);
 
 app.use('/marketing',  marketingRoutes);
 app.use('/profile',   auth, profileRoutes);

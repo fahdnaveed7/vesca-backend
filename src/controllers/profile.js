@@ -32,7 +32,23 @@ async function updateProfile(req, res, next) {
       rate_story, rate_feed, rate_youtube, rate_tiktok,
       default_niche, default_pitch,
       handle_ig, handle_tiktok, handle_youtube, handle_twitter,
+      username,
     } = req.body;
+
+    // Validate username format if provided
+    if (username !== undefined && username !== null && username !== '') {
+      if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+        return res.status(400).json({ error: 'Username must be 3–30 characters: lowercase letters, numbers, and underscores only.' });
+      }
+      // Check uniqueness (excluding this user)
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', username)
+        .neq('id', req.user.id)
+        .maybeSingle();
+      if (existing) return res.status(409).json({ error: 'That username is already taken.' });
+    }
 
     const { data, error } = await supabase
       .from('users')
@@ -41,6 +57,7 @@ async function updateProfile(req, res, next) {
         rate_story, rate_feed, rate_youtube, rate_tiktok,
         default_niche, default_pitch,
         handle_ig, handle_tiktok, handle_youtube, handle_twitter,
+        ...(username !== undefined ? { username: username || null } : {}),
       })
       .eq('id', req.user.id)
       .select()
@@ -91,7 +108,7 @@ async function getPublicKit(req, res, next) {
 
     const { data, error } = await supabase
       .from('users')
-      .select('name, bio, niche, follower_count, handle_ig, handle_tiktok, handle_youtube, handle_twitter, platforms')
+      .select('name, bio, niche, follower_count, handle_ig, handle_tiktok, handle_youtube, handle_twitter, platforms, username')
       .eq('id', user_id)
       .maybeSingle();
 
@@ -102,4 +119,49 @@ async function getPublicKit(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getProfile, updateProfile, getStats, getPublicKit };
+// GET /kit/u/:username — public, lookup kit by username
+async function getPublicKitByUsername(req, res, next) {
+  try {
+    const { username } = req.params;
+    if (!username || !/^[a-z0-9_]{3,30}$/.test(username)) {
+      return res.status(400).json({ error: 'Invalid username' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('name, bio, niche, follower_count, handle_ig, handle_tiktok, handle_youtube, handle_twitter, platforms, username')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Kit not found' });
+
+    res.json(data);
+  } catch (err) { next(err); }
+}
+
+// POST /auth/resolve-username — public
+// Accepts { username }, returns { email } so the frontend can sign in with email+password
+// Rate-limited in index.js (general limiter covers it)
+async function resolveUsername(req, res, next) {
+  try {
+    const { username } = req.body;
+    if (!username || !/^[a-z0-9_]{3,30}$/.test(username)) {
+      return res.status(400).json({ error: 'Invalid username' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('email')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (error) throw error;
+    // Return a generic 404 to avoid username enumeration leaking email addresses
+    if (!data?.email) return res.status(404).json({ error: 'No account found with that username.' });
+
+    res.json({ email: data.email });
+  } catch (err) { next(err); }
+}
+
+module.exports = { getProfile, updateProfile, getStats, getPublicKit, getPublicKitByUsername, resolveUsername };
