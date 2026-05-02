@@ -31,6 +31,7 @@ async function updateProfile(req, res, next) {
       name, bio, niche, platforms, follower_count,
       rate_story, rate_feed, rate_youtube, rate_tiktok,
       default_niche, default_pitch,
+      handle_ig, handle_tiktok, handle_youtube, handle_twitter,
     } = req.body;
 
     const { data, error } = await supabase
@@ -39,6 +40,7 @@ async function updateProfile(req, res, next) {
         name, bio, niche, platforms, follower_count,
         rate_story, rate_feed, rate_youtube, rate_tiktok,
         default_niche, default_pitch,
+        handle_ig, handle_tiktok, handle_youtube, handle_twitter,
       })
       .eq('id', req.user.id)
       .select()
@@ -76,4 +78,28 @@ async function getStats(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getProfile, updateProfile, getStats };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// GET /kit/:user_id — public, no auth required
+// Returns only public-safe fields (no email, no rates, no internal data)
+async function getPublicKit(req, res, next) {
+  try {
+    const { user_id } = req.params;
+    if (!user_id || !UUID_RE.test(user_id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('name, bio, niche, follower_count, handle_ig, handle_tiktok, handle_youtube, handle_twitter, platforms')
+      .eq('id', user_id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Kit not found' });
+
+    res.json(data);
+  } catch (err) { next(err); }
+}
+
+module.exports = { getProfile, updateProfile, getStats, getPublicKit };

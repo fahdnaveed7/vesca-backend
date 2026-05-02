@@ -69,7 +69,8 @@ app.use(generalLimiter);
 
 // ── Admin guard (cron secret) ─────────────────────────────
 function requireCronSecret(req, res, next) {
-  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers['x-cron-secret'] !== secret) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
@@ -81,6 +82,9 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.post('/waitlist',  waitlistLimiter, require('./controllers/waitlist').joinWaitlist);
 app.get('/waitlist',   requireCronSecret, require('./controllers/waitlist').getWaitlist);
 
+// Public media kit endpoint — no auth
+app.get('/kit/:user_id', require('./controllers/profile').getPublicKit);
+
 app.use('/marketing',  marketingRoutes);
 app.use('/profile',   auth, profileRoutes);
 app.use('/outreach',  auth, aiLimiter, outreachRoutes);
@@ -88,6 +92,9 @@ app.use('/inbound',   auth, aiLimiter, inboxRoutes);
 app.use('/deals',     auth, dealRoutes);
 app.use('/proposal',  auth, aiLimiter, proposalRoutes);
 app.use('/payment',   auth, paymentRoutes);
+app.use('/contract',  auth, require('./routes/contracts'));
+app.use('/invoice',   auth, require('./routes/invoices'));
+app.use('/reminders', requireCronSecret, require('./routes/reminders'));
 
 app.use(errorHandler);
 
